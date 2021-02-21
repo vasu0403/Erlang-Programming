@@ -16,35 +16,44 @@ using namespace __gnu_pbds;
 typedef tree <ll, null_type, less <ll>, rb_tree_tag, tree_order_statistics_node_update> ordered_set;
 // order_of_key(val): returns the number of values less than val
 // find_by_order(k): returns an iterator to the kth largest element (0-based)
-int adj[101][101];
+
 int main(void)
 {
-    ios_base::sync_with_stdio(false);
+	ios_base::sync_with_stdio(false);
     cin.tie(NULL);
-    srand (time(NULL));
-    int N = 93, M = rand() % 500 + 1;
-    int P=rand()%50+1;
+    srand(unsigned(time(0))); 
     fstream out_stream;
     out_stream.open("in.txt", ios::out);
-    M =  (N * ( N - 1)) / 2;
-    vector<pair<ll,pair<ll, ll>>> edges;
-    for(int i = 1; i <= N; i++) {
-        for(int j = i + 1; j <= N; j++) {
-            edges.push_back({i, {j,rand()%100}});
-        }
-    }
-    out_stream <<P<< "\n";
-
+    int P = rand() % 50 + 1;
+    int N = rand() % 99 + 2, M = rand() % ((N * (N - 1)) / 2) + 1;
+    M = max(M, N - 1);
+    out_stream << P << "\n";
     out_stream << N << " " << M << "\n";
-    int size = edges.size();
-    int k=0;
-    while(M--) {
-        int ind = rand() % size;
-        out_stream << edges[ind].first << " " << edges[ind].second.first <<" "<<edges[ind].second.second<< "\n";
-        edges.erase(edges.begin() + ind);
-        size--;
+    vector<pair<int, int>> edges;
+    for(int i = 1; i <= N; i++) {
+    	for(int j = i + 1; j <= N; j++) {
+    		edges.pb({i, j});
+    	}
     }
-    int src=rand()%N+1;
-    out_stream <<src<< "\n";
-
+    set<pair<int, int>> taken;
+    for(int i = 2; i <= N; i++) {
+    	int node = (rand() % (i - 1)) + 1;
+    	int W = rand() % 1000;
+    	out_stream << node << " " << i << " " << W << "\n";
+    	taken.insert({node, i});
+    	M--;
+    }
+ 	random_shuffle(edges.begin(), edges.end());
+    while(M) {
+    	pair<int, int> edge = edges.back();
+    	edges.pop_back();
+    	if(taken.find(edge) != taken.end()) {
+    		continue;
+    	}
+    	M--;
+    	int W = rand() % 1000;
+    	out_stream << edge.ff << " " << edge.ss << " " << W << "\n";
+    }
+    int S = rand() % N + 1;
+    out_stream << S << "\n";
 }

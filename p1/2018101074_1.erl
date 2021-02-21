@@ -1,4 +1,4 @@
--module(token_ring).
+-module('2018101074_1').
 -compile([export_all]).
 
 
@@ -20,11 +20,13 @@ node(ProcNum, Neighbour, Out) ->
             node(ProcNum, Neighbour, Out);
         {_, {token, From, Token}} when ProcNum =/= 0 ->
             {ok, Out_file} = file:open(Out, [append]),
-            io:format(Out_file, "Process ~p received token ~p from process ~p\n", [ProcNum, Token, From]),
+            io:format(Out_file, "Process ~p received token ~p from process ~p.\n", [ProcNum, Token, From]),
+            file:close(Out_file),
             Neighbour ! {self(), {token, ProcNum, Token}};
         {_, {token, From, Token}} when ProcNum =:= 0 ->
             {ok, Out_file} = file:open(Out, [append]),
-            io:format(Out_file, "Process ~p received token ~p from process ~p\n", [ProcNum, Token, From])
+            io:format(Out_file, "Process ~p received token ~p from process ~p.\n", [ProcNum, Token, From]),
+            file:close(Out_file)
     end.
 
 
@@ -33,12 +35,11 @@ file_handling(Args) ->
     Out = hd(Rest),
 
     {ok, In_file} = file:open(In, [read]),
-    {ok, Txt} = file:read(In_file, 1024*1024),
-    
-    L = string:tokens(Txt, " "),
-    NumProcs = list_to_integer(hd(L)),
-    Token = list_to_integer(lists:nth(2, L)),
+    {ok, [NumProcs, Token]} = io:fread(In_file, [], "~d~d"),
+    file:close(In_file),
 
+    {ok, Out_file} = file:open(Out, [write]),               % To clear the file if already existing       
+    file:close(Out_file),
     {NumProcs, Token, Out}.
 
 main(Args) ->

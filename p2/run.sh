@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# while :
-# do
+while :
+do
     ./make_test
-    erl -noshell -s 2018101087_2 main in.txt out.txt -s init stop
+    erl -noshell -s 2018101074_2 main in.txt out.txt -s init stop
     ./checker
-# done;
+done;

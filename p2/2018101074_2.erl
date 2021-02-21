@@ -1,4 +1,4 @@
--module(bellman).
+-module('2018101074_2').
 
 -compile([export_all]).
 
@@ -39,13 +39,13 @@ file_handling(Args) ->
     N = list_to_integer(lists:nth(1, NodesEdgesTokenized)),
     M = list_to_integer(lists:nth(2, NodesEdgesTokenized)),
 
-    {list_to_integer(NumProcs), N, 2*M, Edges, list_to_integer(Source)}.
+    {list_to_integer(NumProcs), N, 2*M, Edges, list_to_integer(Source), Out}.
 
-output_result(_, Ind, Size) when Ind >= Size ->
+output_result(_, Ind, Size, _) when Ind >= Size ->
     done;
-output_result(DistanceCombined, Ind, Size) when Ind < Size ->
-    io:format("~p ~p~n", [Ind, array:get(Ind, DistanceCombined)]),
-    output_result(DistanceCombined, Ind + 1, Size).
+output_result(DistanceCombined, Ind, Size, Fd) when Ind < Size ->
+    io:format(Fd, "~p ~p~n", [Ind, array:get(Ind, DistanceCombined)]),
+    output_result(DistanceCombined, Ind + 1, Size, Fd).
 
 
 bellmanUpdates(Distance, [], Update) ->
@@ -87,10 +87,10 @@ receiveUpdatesFromAll([H | T], NewDistance, Update) ->
     end.
 
 
-node(Distance, Edges, ProcNum, Pids) ->
+node(Distance, Edges, ProcNum, Pids, Out) ->
     receive 
         {_, {pids, PidsReceived}} ->
-            node(Distance, Edges, ProcNum, PidsReceived);
+            node(Distance, Edges, ProcNum, PidsReceived, Out);
         {_, start} ->
             {NewDistance, Update} = bellmanUpdates(Distance, Edges, false),
             _ = [X ! {bellman_updates, {self(), {NewDistance, Update}}} || X <- Pids],
@@ -98,11 +98,13 @@ node(Distance, Edges, ProcNum, Pids) ->
             case (UpdateCombined =:= true) of
                 true ->
                     self() ! {self(), start},
-                    node(DistanceCombined, Edges, ProcNum, Pids);
+                    node(DistanceCombined, Edges, ProcNum, Pids, Out);
                 false ->
                     case (ProcNum =:= 1) of 
                         true ->
-                            output_result(DistanceCombined, 1, array:size(DistanceCombined));
+                            {ok, Fd} = file:open(Out, [write]),
+                            output_result(DistanceCombined, 1, array:size(DistanceCombined), Fd),
+                            file:close(Fd);
                         false ->
                             do_nothing
                     end
@@ -110,9 +112,9 @@ node(Distance, Edges, ProcNum, Pids) ->
     end.
 
 
-distribute_graph(_, _, _, Proc, NumProcs, _, _, Pids) when Proc > NumProcs ->
+distribute_graph(_, _, _, Proc, NumProcs, _, _, Pids, _) when Proc > NumProcs ->
     Pids;
-distribute_graph(N, M, Edges, Proc, NumProcs, Cur, Distance, Pids) when Proc =< NumProcs ->
+distribute_graph(N, M, Edges, Proc, NumProcs, Cur, Distance, Pids, Out) when Proc =< NumProcs ->
     Rem = M rem NumProcs,
     Each = M div NumProcs,
     case Rem >= Proc of
@@ -123,14 +125,14 @@ distribute_graph(N, M, Edges, Proc, NumProcs, Cur, Distance, Pids) when Proc =< 
             Take = Each,
             Subset = lists:sublist(Edges, Cur, Take)
     end,
-    Pid = spawn(?MODULE, node, [Distance, Subset, Proc, []]),
-    distribute_graph(N, M, Edges, Proc + 1, NumProcs, Cur + Take, Distance, Pids ++ [Pid]).
+    Pid = spawn(?MODULE, node, [Distance, Subset, Proc, [], Out]),
+    distribute_graph(N, M, Edges, Proc + 1, NumProcs, Cur + Take, Distance, Pids ++ [Pid], Out).
 
 
 main(Args) ->
-    {NumProcs, N, M, Edges, Source} = file_handling(Args),
+    {NumProcs, N, M, Edges, Source, Out} = file_handling(Args),
     DistanceDefault = array:new(N + 1, {default, -1}),
     Distance = array:set(Source, 0, DistanceDefault),
-    Pids = distribute_graph(N, M, Edges, 1, NumProcs, 1, Distance, []),
+    Pids = distribute_graph(N, M, Edges, 1, NumProcs, 1, Distance, [], Out),
     [Pid ! {self(), {pids, Pids}} || Pid <- Pids],
     [Pid ! {self(), start} || Pid <- Pids].
